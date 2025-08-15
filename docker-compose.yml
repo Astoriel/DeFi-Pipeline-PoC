@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: defi_pipeline_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: defi_pipeline
+      POSTGRES_USER: pipeline
+      POSTGRES_PASSWORD: pipeline_secret
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/01_init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pipeline -d defi_pipeline"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pipeline:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: defi_pipeline_app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://pipeline:pipeline_secret@postgres:5432/defi_pipeline
+      ETHERSCAN_API_KEY: ${ETHERSCAN_API_KEY:-}
+      DUNE_API_KEY: ${DUNE_API_KEY:-}
+      COINGECKO_API_KEY: ${COINGECKO_API_KEY:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      EXTRACT_START_DATE: ${EXTRACT_START_DATE:-2024-01-01}
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: python extract/run_extraction.py
+    profiles:
+      - run  # Only starts with: docker-compose --profile run up
+
+volumes:
+  pgdata:
+    driver: local
