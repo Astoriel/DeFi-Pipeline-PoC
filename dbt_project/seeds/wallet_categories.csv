@@ -1,0 +1,8 @@
+label,label_type,description,is_mercenary
+airdrop_hunter,behavioral,Wallet that farms airdrops and sells immediately,true
+governance_voter,behavioral,Participates in protocol governance,false
+liquidity_provider,behavioral,Provides liquidity to DEX pools,false
+whale,size,Large wallet with >$1M volume,false
+retail_trader,behavioral,Regular small-scale user,false
+defi_power_user,behavioral,Active across multiple protocols,false
+unknown,system,Label not available,false

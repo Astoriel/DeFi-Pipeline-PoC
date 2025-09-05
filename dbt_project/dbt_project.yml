@@ -1,0 +1,44 @@
+name: 'defi_revenue_attribution'
+version: '1.0.0'
+config-version: 2
+
+profile: 'defi_revenue_attribution'
+
+# Model path configuration
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+analysis-paths: ["analyses"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Global model configurations
+models:
+  defi_revenue_attribution:
+    staging:
+      +materialized: view
+      +schema: staging
+
+    intermediate:
+      +materialized: ephemeral
+
+    marts:
+      +materialized: table
+      +schema: marts
+
+# Seed defaults
+seeds:
+  defi_revenue_attribution:
+    +schema: raw
+
+# Variable defaults
+vars:
+  start_date: '2024-01-01'
+  protocols:
+    - 'Uniswap V3'
+    - 'Aave V3'

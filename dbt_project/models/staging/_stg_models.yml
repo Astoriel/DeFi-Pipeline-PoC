@@ -1,0 +1,67 @@
+version: 2
+
+models:
+  - name: stg_etherscan__transactions
+    description: >
+      Cleaned and standardised wallet transactions from Uniswap V3 and Aave V3.
+      Casts data types, converts wei to ETH, flags transaction types.
+    columns:
+      - name: tx_hash
+        description: "Unique transaction identifier"
+        tests: [unique, not_null]
+      - name: block_timestamp
+        tests: [not_null]
+      - name: from_address
+        description: "Lowercase wallet address"
+        tests: [not_null]
+      - name: protocol_name
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Uniswap V3', 'Aave V3']
+      - name: value_eth
+        description: "Transaction value in ETH (converted from wei)"
+      - name: tx_type
+        description: "Classified transaction type: swap, supply, borrow, repay, withdraw, other"
+
+  - name: stg_defillama__protocol_tvl
+    description: "Daily TVL snapshots per protocol, normalised dates."
+    columns:
+      - name: protocol_slug
+        tests: [not_null]
+      - name: date
+        tests: [not_null]
+      - name: tvl_usd
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+
+  - name: stg_dune__wallet_labels
+    description: "Wallet behavioral labels from Dune Analytics."
+    columns:
+      - name: wallet_address
+        tests: [unique, not_null]
+      - name: label
+        tests:
+          - accepted_values:
+              values:
+                - airdrop_hunter
+                - governance_voter
+                - liquidity_provider
+                - whale
+                - retail_trader
+                - defi_power_user
+              severity: warn  # Warn only — new labels may appear
+
+  - name: stg_coingecko__token_prices
+    description: "Daily USD prices for tracked DeFi tokens."
+    columns:
+      - name: token_id
+        tests: [not_null]
+      - name: date
+        tests: [not_null]
+      - name: price_usd
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0

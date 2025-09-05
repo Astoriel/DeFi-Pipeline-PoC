@@ -1,0 +1,55 @@
+version: 2
+
+sources:
+  - name: etherscan
+    schema: raw
+    description: "Raw transactions pulled from Etherscan API for DeFi protocol contracts."
+    tables:
+      - name: etherscan_transactions
+        description: "All wallet interactions with Uniswap V3 and Aave V3 contracts."
+        columns:
+          - name: tx_hash
+            description: "Unique transaction hash (primary key)"
+          - name: block_timestamp
+            description: "Block timestamp in UTC"
+          - name: from_address
+            description: "Wallet address that initiated the transaction"
+          - name: protocol_name
+            description: "Protocol name (Uniswap V3 / Aave V3)"
+
+  - name: defillama
+    schema: raw
+    description: "Protocol TVL and fee data from DeFiLlama."
+    tables:
+      - name: defillama_tvl
+        description: "Daily TVL snapshots per protocol."
+      - name: defillama_fees
+        description: "Daily protocol fees and revenue."
+
+  - name: dune
+    schema: raw
+    description: "Wallet labels from Dune Analytics."
+    tables:
+      - name: dune_wallet_labels
+        description: "Behavioral classification of wallets: airdrop_hunter, governance_voter, etc."
+
+  - name: coingecko
+    schema: raw
+    description: "Daily token price data from CoinGecko."
+    tables:
+      - name: token_prices
+        description: "Daily prices for ETH, WETH, UNI, AAVE, USDC, USDT, DAI."
+
+  - name: lifi
+    schema: raw
+    description: "Cross-chain footprint of wallets."
+    tables:
+      - name: cross_chain_activity
+        description: "Number of chains and volume bridged per wallet."
+
+  - name: portfolio
+    schema: raw
+    description: "Historical profitability of trading wallets."
+    tables:
+      - name: wallet_enrichment
+        description: "Historical win rate and realized profit."
