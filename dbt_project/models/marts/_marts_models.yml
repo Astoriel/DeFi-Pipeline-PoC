@@ -1,0 +1,60 @@
+version: 2
+
+models:
+  - name: fct_cohort_retention
+    description: >
+      Weekly cohort retention rates broken down by acquisition source.
+      Core metric for understanding user quality: airdrop hunters vs loyal users.
+    columns:
+      - name: cohort_id
+        description: "Year-week identifier e.g. '2024-W01'"
+        tests: [not_null]
+      - name: acquisition_source
+        tests: [not_null]
+      - name: weeks_since_first
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+      - name: retention_rate
+        description: "% of cohort still active (0.0 to 1.0)"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 1
+      - name: cohort_size
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+
+  - name: fct_daily_revenue_attribution
+    description: >
+      Daily protocol revenue attributed to user cohorts by acquisition source.
+      Answers: "Which acquisition channel generates the highest LTV users?"
+    columns:
+      - name: date
+        tests: [not_null]
+      - name: protocol_name
+        tests: [not_null]
+      - name: attributed_revenue_usd
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+
+  - name: dim_wallets
+    description: "Wallet master: one row per unique wallet with lifetime stats."
+    columns:
+      - name: wallet_address
+        tests: [unique, not_null]
+      - name: acquisition_source
+        tests: [not_null]
+      - name: volume_segment
+        tests:
+          - accepted_values:
+              values: [whale, power_user, active_user, retail]
+
+  - name: dim_protocols
+    description: "Protocol master: tracked DeFi protocols with TVL and metadata."
+    columns:
+      - name: protocol_name
+        tests: [unique, not_null]
