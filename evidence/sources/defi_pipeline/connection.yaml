@@ -1,0 +1,9 @@
+name: defi_pipeline
+type: postgres
+options:
+  host: localhost
+  port: 5433
+  user: pipeline
+  password: pipeline_secret
+  database: defi_pipeline
+  ssl: false

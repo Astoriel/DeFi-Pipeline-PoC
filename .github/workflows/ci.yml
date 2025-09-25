@@ -1,0 +1,81 @@
+name: ✅ CI Checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  lint-and-test:
+    name: 🧹 Lint + Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: 📦 Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: 🧹 Lint with ruff
+        run: ruff check extract/ tests/
+
+      - name: 🧪 Unit tests
+        run: pytest tests/ -v --cov=extract --cov-report=xml
+
+      - name: 📤 Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+
+  dbt-compile:
+    name: 🔧 dbt Compile Check
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: defi_pipeline
+          POSTGRES_USER: pipeline
+          POSTGRES_PASSWORD: pipeline_secret
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - run: pip install dbt-core dbt-postgres
+      - run: psql postgresql://pipeline:pipeline_secret@localhost:5432/defi_pipeline -f docker/init.sql
+
+      - name: 📦 dbt deps
+        working-directory: ./dbt_project
+        run: dbt deps --no-use-colors
+
+      - name: 🔧 dbt compile
+        working-directory: ./dbt_project
+        run: dbt compile --target ci --no-use-colors
+        env:
+          DB_HOST:     localhost
+          DB_PORT:     '5432'
+          DB_NAME:     defi_pipeline
+          DB_USER:     pipeline
+          DB_PASSWORD: pipeline_secret
