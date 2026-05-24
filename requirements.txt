@@ -6,6 +6,7 @@ sqlalchemy
 python-dotenv
 tenacity
 pydantic
+pydantic-settings
 
 # dbt
 dbt-core
