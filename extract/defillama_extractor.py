@@ -7,7 +7,7 @@ API docs: https://defillama.com/docs/api
 """
 from __future__ import annotations
 
-from datetime import datetime, date
+from datetime import date
 
 import pandas as pd
 from loguru import logger

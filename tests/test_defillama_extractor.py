@@ -2,9 +2,8 @@
 Unit tests for DeFiLlamaExtractor.
 """
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import pandas as pd
-from datetime import date
 
 from extract.defillama_extractor import DeFiLlamaExtractor
 

@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import time
 from abc import ABC, abstractmethod
-from datetime import datetime
 from typing import Any
 
 import pandas as pd
@@ -104,7 +103,6 @@ class BaseExtractor(ABC):
 
     def run(self, loader=None) -> int:
         """Extract, validate, optionally load. Returns number of rows processed."""
-        started_at = datetime.utcnow()
         try:
             df = self.extract()
             df = self.validate(df)

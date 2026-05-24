@@ -2,9 +2,8 @@
 Unit tests for EtherscanExtractor.
 """
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 import pandas as pd
-from datetime import datetime
 
 from extract.etherscan_extractor import EtherscanExtractor
 
@@ -75,7 +74,7 @@ class TestEtherscanExtractor:
         raw = mock_api_response["result"]
         df = extractor._parse_transactions(raw, "Uniswap V3")
         # value_wei should be 1e18 for first tx
-        assert df.iloc[0]["value_wei"] == 1_000_000_000_000_000_000
+        assert df.iloc[0]["value_wei"] == "1000000000000000000"
 
     def test_method_id_classification(self, extractor, mock_api_response):
         raw = mock_api_response["result"]
@@ -128,7 +127,6 @@ class TestEtherscanExtractor:
 
     def test_validate_warns_on_empty(self, extractor, caplog):
         """validate() should warn on empty DataFrame."""
-        import logging
         df = pd.DataFrame()
         result = extractor.validate(df)
         assert result.empty

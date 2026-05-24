@@ -6,7 +6,7 @@ API docs: https://www.coingecko.com/en/api/documentation
 """
 from __future__ import annotations
 
-from datetime import datetime, date, timedelta
+from datetime import date
 
 import pandas as pd
 from loguru import logger
@@ -88,7 +88,7 @@ class CoinGeckoExtractor(BaseExtractor):
         df = df.drop_duplicates(subset=["token_id", "date"])
 
         # MOCK FOR 2021-2023 ETHERSCAN DATA (since free tier is 365 days max)
-        if token_id in ["ethereum", "wrapped-ether"]:
+        if days >= 365 and token_id in ["ethereum", "wrapped-ether"]:
             mock_dates = pd.date_range(start="2021-01-01", end="2024-01-01")
             mock_rows = []
             for dt in mock_dates:

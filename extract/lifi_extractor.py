@@ -8,7 +8,6 @@ to get distinct chains interacted with.
 from __future__ import annotations
 
 import random
-from typing import Any
 
 import pandas as pd
 from loguru import logger
