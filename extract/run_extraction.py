@@ -11,6 +11,7 @@ Usage:
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 from datetime import datetime
 from typing import Optional
 
@@ -33,6 +34,7 @@ console = Console()
 
 
 def _configure_logging() -> None:
+    Path("logs").mkdir(exist_ok=True)
     logger.remove()
     logger.add(
         sys.stderr,
@@ -48,36 +50,54 @@ def _configure_logging() -> None:
     )
 
 
-def _run_extractor(extractor, loader: PostgresLoader, source_name: str) -> dict:
+def _run_extractor(
+    extractor,
+    loader: PostgresLoader | None,
+    source_name: str,
+) -> dict:
     """Run a single extractor and return result metadata."""
     started = datetime.utcnow()
     try:
         df = extractor.extract()
         df = extractor.validate(df)
+    except Exception as e:
+        if loader is not None:
+            loader.log_run(source_name, "failed", 0, 0, started, str(e))
+        logger.error(f"Extractor {source_name} failed: {e}")
+        return {"source": source_name, "status": "❌ failed", "rows": 0, "error": str(e)}
 
-        if df.empty:
+    if df.empty:
+        if loader is not None:
             loader.log_run(source_name, "partial", 0, 0, started)
-            return {"source": source_name, "status": "⚠️ empty", "rows": 0}
+        return {"source": source_name, "status": "⚠️ empty", "rows": 0}
 
-        # Each extractor has its own conflict column logic
-        conflict_map = {
-            "etherscan": ["tx_hash"],
-            "defillama": ["protocol_slug", "chain", "date"],
-            "dune": ["wallet_address"],
-            "coingecko": ["token_id", "date"],
-            "lifi": ["wallet_address"],
-            "portfolio": ["wallet_address"],
-        }
-        conflict_cols = conflict_map.get(source_name)
+    if loader is None:
+        return {"source": source_name, "status": "✅ dry-run", "rows": len(df)}
 
+    # Each extractor has its own conflict column logic.
+    conflict_map = {
+        "etherscan": ["tx_hash"],
+        "defillama": ["protocol_slug", "chain", "date"],
+        "dune": ["wallet_address"],
+        "coingecko": ["token_id", "date"],
+        "lifi": ["wallet_address"],
+        "portfolio": ["wallet_address"],
+    }
+    conflict_cols = conflict_map.get(source_name)
+
+    try:
         rows = loader.upsert(df, extractor.target_table, conflict_columns=conflict_cols)
         loader.log_run(source_name, "success", len(df), rows, started)
         return {"source": source_name, "status": "✅ success", "rows": rows}
-
     except Exception as e:
         loader.log_run(source_name, "failed", 0, 0, started, str(e))
-        logger.error(f"Extractor {source_name} failed: {e}")
-        return {"source": source_name, "status": "❌ failed", "rows": 0, "error": str(e)}
+        logger.error(f"Loader for {source_name} failed: {e}")
+        return {
+            "source": source_name,
+            "status": "💥 load failed",
+            "rows": 0,
+            "error": str(e),
+        }
 
 
 @app.command()
@@ -89,6 +109,11 @@ def run(
     ),
     dry_run: bool = typer.Option(
         False, "--dry-run", help="Extract only, do not load to database"
+    ),
+    strict: bool = typer.Option(
+        False,
+        "--strict",
+        help="Fail the process when a source extractor returns no data or errors.",
     ),
 ) -> None:
     """Run the DeFi data extraction pipeline."""
@@ -130,12 +155,18 @@ def run(
     console.print(table)
 
     # Check if any failed
-    failed = [r for r in results if "failed" in r["status"]]
-    if failed:
-        console.print(f"\n[red]❌ {len(failed)} extractor(s) failed[/red]")
+    load_failed = [r for r in results if "load failed" in r["status"]]
+    source_failed = [
+        r for r in results
+        if "load failed" not in r["status"]
+        and ("failed" in r["status"] or "empty" in r["status"])
+    ]
+    if load_failed or (strict and source_failed):
+        console.print(f"\n[red]❌ {len(load_failed) + len(source_failed)} extractor(s) failed[/red]")
         raise typer.Exit(1)
     else:
-        console.print("\n[green]✅ All extractors completed successfully![/green]\n")
+        loaded = sum(r["rows"] for r in results)
+        console.print(f"\n[green]✅ Extraction completed with {loaded:,} rows available[/green]\n")
 
 
 if __name__ == "__main__":

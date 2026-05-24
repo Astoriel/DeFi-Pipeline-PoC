@@ -1,9 +1,11 @@
-name: 🚀 Daily DeFi Pipeline
+name: Daily DeFi Pipeline
 
 on:
   schedule:
-    - cron: '0 0 * * *'   # Every day at midnight UTC
-  workflow_dispatch:        # Allow manual triggering from GitHub UI
+    # Daily, away from the top-of-hour Actions rush. Changing cron also reactivates
+    # scheduled workflows that GitHub disabled after repository inactivity.
+    - cron: '23 0 * * *'
+  workflow_dispatch:
     inputs:
       source:
         description: 'Data source to extract (all / etherscan / defillama / dune / coingecko)'
@@ -15,11 +17,8 @@ env:
   DBT_PROFILES_DIR: ./dbt_project
 
 jobs:
-  # ──────────────────────────────────────────────
-  # JOB 1: Extract data from all APIs
-  # ──────────────────────────────────────────────
-  extract:
-    name: 🐍 Extract
+  pipeline:
+    name: Extract and transform
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -37,24 +36,24 @@ jobs:
           - 5432:5432
 
     steps:
-      - name: 📥 Checkout code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: 🐍 Set up Python ${{ env.PYTHON_VERSION }}
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
 
-      - name: 📦 Install dependencies
+      - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: 🗃️ Initialize database schema
-        run: psql $DATABASE_URL -f docker/init.sql
+      - name: Initialize database schema
+        run: psql "$DATABASE_URL" -f docker/init.sql
         env:
           DATABASE_URL: postgresql://pipeline:pipeline_secret@localhost:5432/defi_pipeline
 
-      - name: 🔄 Run extraction pipeline
+      - name: Run extraction pipeline
         run: |
           python -m extract.run_extraction \
             --source ${{ github.event.inputs.source || 'all' }}
@@ -70,43 +69,11 @@ jobs:
           DB_PASSWORD:        pipeline_secret
           LOG_LEVEL:          INFO
 
-  # ──────────────────────────────────────────────
-  # JOB 2: Transform with dbt (runs after extract)
-  # ──────────────────────────────────────────────
-  transform:
-    name: 🔧 Transform (dbt)
-    needs: extract
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: defi_pipeline
-          POSTGRES_USER: pipeline
-          POSTGRES_PASSWORD: pipeline_secret
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
-
-      - run: pip install dbt-core dbt-postgres
-
-      - name: 📦 Install dbt packages
+      - name: Install dbt packages
         working-directory: ./dbt_project
         run: dbt deps --no-use-colors
 
-      - name: 🌱 Load seed data
+      - name: Load seed data
         working-directory: ./dbt_project
         run: dbt seed --target prod --no-use-colors
         env:
@@ -116,7 +83,7 @@ jobs:
           DB_USER:     pipeline
           DB_PASSWORD: pipeline_secret
 
-      - name: 🏗️ Run dbt models
+      - name: Run dbt models
         working-directory: ./dbt_project
         run: dbt run --target prod --no-use-colors
         env:
@@ -126,7 +93,7 @@ jobs:
           DB_USER:     pipeline
           DB_PASSWORD: pipeline_secret
 
-      - name: ✅ Run dbt tests
+      - name: Run dbt tests
         working-directory: ./dbt_project
         run: dbt test --target prod --no-use-colors
         env:
@@ -136,7 +103,7 @@ jobs:
           DB_USER:     pipeline
           DB_PASSWORD: pipeline_secret
 
-      - name: 📊 Generate dbt docs
+      - name: Generate dbt docs
         working-directory: ./dbt_project
         run: dbt docs generate --target prod --no-use-colors
         env:
@@ -146,7 +113,7 @@ jobs:
           DB_USER:     pipeline
           DB_PASSWORD: pipeline_secret
 
-      - name: 📤 Upload dbt artifacts
+      - name: Upload dbt artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dbt-docs-${{ github.run_number }}

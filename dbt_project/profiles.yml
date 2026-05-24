@@ -23,11 +23,10 @@ defi_revenue_attribution:
 
     ci:
       type: postgres
-      host: localhost
-      host: 127.0.0.1
-      user: pipeline
-      pass: pipeline_secret
-      port: 5433
-      dbname: defi_pipeline
-      schema: staging_ci
+      host: "{{ env_var('DB_HOST', '127.0.0.1') }}"
+      port: "{{ env_var('DB_PORT', '5432') | int }}"
+      user: "{{ env_var('DB_USER', 'pipeline') }}"
+      password: "{{ env_var('DB_PASSWORD', 'pipeline_secret') }}"
+      dbname: "{{ env_var('DB_NAME', 'defi_pipeline') }}"
+      schema: staging
       threads: 2
