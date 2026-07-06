@@ -14,7 +14,7 @@ on:
 
 env:
   PYTHON_VERSION: '3.12'
-  DBT_PROFILES_DIR: ./dbt_project
+  DBT_PROFILES_DIR: ${{ github.workspace }}/dbt_project
 
 jobs:
   pipeline:
@@ -28,7 +28,7 @@ jobs:
           POSTGRES_USER: pipeline
           POSTGRES_PASSWORD: pipeline_secret
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U pipeline -d defi_pipeline"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
